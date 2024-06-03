@@ -1,0 +1,20 @@
+[MESSAGES CONTROL]
+disable=C0114,  # missing-module-docstring
+        C0115,  # missing-class-docstring
+        C0116,  # missing-function-docstring
+        C0303,  # trailing-whitespace
+        C0301,  # line-too-long
+        C0103,  # invalid-name
+        W0611,  # unused-import
+        R0903,  # too-few-public-methods
+        R0913,  # too-many-arguments
+        R0902,  # too-many-instance-attributes
+        R0914,  # too-many-locals
+        R0915,  # too-many-statements
+        E1101,  # no-member
+        C0411,  # wrong-import-order
+
+max-line-length=120
+
+[FORMAT]
+max-line-length=120
