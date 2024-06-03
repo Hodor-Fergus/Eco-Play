@@ -1,0 +1,4 @@
+Collect 3 gold coins in a row to get bonus points
+Finish with 15 seconds to get extra points
+The lower path may be faster
+Red coins are worth the most
