@@ -2,6 +2,13 @@ from animation import animation
 from image_utils import load_player_animation
 import pygame
 
+"""==============================================================
+Created to represent the player
+keeps track of the players animation and curretn position
+also loads the required animations for the player
+
+================================================================="""
+
 class player(pygame.sprite.Sprite):
     
     def __init__(self, player_size: list[int], animation_rate: int, spawn_point: list[int]):
@@ -35,10 +42,10 @@ class player(pygame.sprite.Sprite):
         
         # Create key animation bindings
         self.key_animation_bindings = {
-            pygame.K_a : "walk_l",
-            pygame.K_s : "walk_f",
-            pygame.K_w : "walk_b",
-            pygame.K_d : "walk_r"
+            pygame.K_LEFT : "walk_l",
+            pygame.K_DOWN : "walk_f",
+            pygame.K_UP : "walk_b",
+            pygame.K_RIGHT : "walk_r"
             }
         
     def update(self):
@@ -49,6 +56,7 @@ class player(pygame.sprite.Sprite):
             self.current_animation = self.animations[self.current_animation["next"]]
             self.current_animation["animation"].rect.center = self.rect.center
 
+    # Selects the appropriate animation based on the given input from the user
     def event_handler(self):
         keys = pygame.key.get_pressed()
         for key in self.key_animation_bindings.keys():
@@ -56,8 +64,11 @@ class player(pygame.sprite.Sprite):
                 self.current_animation = self.animations[self.key_animation_bindings[key]]
                 self.current_animation["animation"].rect.center = self.rect.center
                 
+    # Draws the player onto the screen
     def draw(self, screen: pygame.Surface):
         self.current_animation["animation"].draw(screen)
         
+
+    # Ensures that the players actual position and the players animation are in sync
     def update_animation_position(self, new_center: list[int]):
         self.current_animation["animation"].rect.center = new_center

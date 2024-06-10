@@ -1,5 +1,10 @@
 import pygame
 
+'''===================================================================
+Used to handle animations within the game, this includes player animation,
+the spining coins etc
+======================================================================='''
+
 class animation(pygame.sprite.Sprite):
     
     def __init__(self, coord: list[int], images: list[pygame.Surface], is_infinite: bool, animation_rate=1):
@@ -8,7 +13,7 @@ class animation(pygame.sprite.Sprite):
         if self.frames == 0:
             print(f"WARNING: Animation created with no frames")
             return
-        self.image = self.frames[0];
+        self.image = self.frames[0]
         self.rect = self.image.get_rect()
         self.rect.center = coord
         
@@ -18,6 +23,7 @@ class animation(pygame.sprite.Sprite):
         self.is_infinite = is_infinite
         self.done = False
         
+    # Selects the current aniimation from the given list of animations
     def update(self):
         self.counter += 1
         if self.counter == self.animation_rate:
@@ -32,6 +38,7 @@ class animation(pygame.sprite.Sprite):
         if not self.done:
             self.image = self.frames[self.frame_index]
             
+    # Draws the current animation onto the given screen variable
     def draw(self, screen: pygame.Surface):
         screen.blit(self.image, self.rect)
         
@@ -42,7 +49,7 @@ class animation(pygame.sprite.Sprite):
         self.done = False
         
     
-
+# Inherits from the above class, only difference is that this class plays a sound when the coin is removed from the game
 class coin_animation(animation):
     def __init__(self, coord: list[int], images: list[pygame.Surface], is_infinite: bool, animation_rate=1):
         animation.__init__(self, coord, images, is_infinite, animation_rate)

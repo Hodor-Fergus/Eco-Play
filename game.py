@@ -8,22 +8,30 @@ import csv
 import urllib3
 import time
 
+"""=========================================================================================================
+Class to handle all of the games functions
+Handles the games logic, events, player motion, construction of game objects and assets
+Creation of menus and gui elements
+============================================================================================================="""
+
 class game:
-    def __init__(self, tile_size: int, player_size: list[int], player_speed: float, animation_rate: int, start_index: list[int]):
+    def __init__(self, window_size: list[int], tile_size: list[float], player_size: list[int], player_speed: float, animation_rate: int, start_index: list[int]):
         
+        self.max_time = 65*1000 # In milliseconds
+
+        # Define a theme for the menus in the game
         self.menu_theme = pygame_menu.themes.THEME_GREEN
         self.menu_theme.border_width = 0
         self.menu_theme.title_background_color = (20, 60, 10)
         self.menu_theme.background_color = (50, 110, 10)
-        self.font_size = 300
-        self.menu_theme.widget_font_shadow = True
-        self.menu_theme.widget_font_shadow_color = (100, 100, 255)
+        self.font_size = 200
         self.menu_theme.title_bar_style = pygame_menu.widgets.MENUBAR_STYLE_UNDERLINE
-        self.menu_theme.widget_font = './assets/fonts/ThaleahFat.ttf'
-        self.menu_theme.title_font = './assets/fonts/ThaleahFat.ttf'
-        self.menu_theme.title_font_size = 80
+        self.menu_theme.widget_font = './assets/fonts/CactusClassicalSerif-Regular.ttf'
+        self.menu_theme.title_font = './assets/fonts/JosefinSans-Italic-VariableFont_wght.ttf'
+        self.menu_theme.title_font_size = 40
         self.menu_theme.selection_color = (200, 200, 255)
         
+        # Load and create sounds for the game
         self.bg_music = pygame.mixer.Sound('./assets/sounds/bg_music.mp3')
         self.ui_music = pygame.mixer.Sound('./assets/sounds/menu_switch.mp3')
         self.game_over_music = pygame.mixer.Sound('./assets/sounds/game_over.mp3')
@@ -31,12 +39,13 @@ class game:
         self.sound_channel = pygame.mixer.Channel(0)
         self.ui_sound_channel = pygame.mixer.Channel(1)
 
+        # Create game entities
         self.tiles = game_tiles(tile_size, player_speed)
         self.player = player(player_size, animation_rate, self.tiles.index_to_coord(start_index))
         self.start_index = start_index
         self.animation_rate = animation_rate
         self.player_size = player_size
-        self.inputs = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]
+        self.inputs = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT]
         self.player_index = start_index
         self.t1 = pygame.time.get_ticks()
         self.t2 = pygame.time.get_ticks()
@@ -48,30 +57,30 @@ class game:
         
         # Create the game menus
         # the home menu       
-        self.info_menu = pygame_menu.Menu("Instructions", 700, 600, theme=self.menu_theme)
-        self.info_menu.add.label("Make your way to the treasure box")
-        self.info_menu.add.label("Points: ")
-        self.info_menu.add.label("Blue Diamond = 50 points")
-        self.info_menu.add.label("Gold = 15 points")
-        self.info_menu.add.label("Silver = 10 points")
-        self.info_menu.add.label("Red = 5 points")
-        self.info_menu.add.label("Black = 1 point")
+        self.info_menu = pygame_menu.Menu("Instructions", 0.8*window_size[0], 0.95*window_size[1], theme=self.menu_theme)
+        self.info_menu.add.label("Make your way to the treasure box", font_size=30)
+        self.info_menu.add.label("Points: ", font_size=30)
+        self.info_menu.add.label("Blue Diamond = 50 points      Gold = 15 points", font_size=30)
+        self.info_menu.add.label("Silver = 10 points   Black = 1 point     Red = 5 points", font_size=30)
+
 
         self.info_menu.add.label("Controls:")
-        self.info_menu.add.label("W         Up")
-        self.info_menu.add.label("A         Down")
-        self.info_menu.add.label("S         Left")
-        self.info_menu.add.label("D         Right")
+        self.info_menu.add.label("UP Arrow         Up")
+        self.info_menu.add.label("DOWN Arrow         Down")
+        self.info_menu.add.label("LEFT Arrow        Left")
+        self.info_menu.add.label("RIGHT Arrow       Right")
         
-        self.info_menu.add.label("Finish with 20 seconds to earn extra points")
+        items = [('1', 65), ('2', 45), ('3', 30)]
+        self.info_menu.add.selector("Level", items, onchange=self.set_game_time)
+        
         self.info_menu.add.button("Start", self.select_username)
         self.info_menu.add.button("Back", self.show_home_menu)
     
         self.home_menu = pygame_menu.Menu("ECO PLAY", 600, 400, theme=self.menu_theme)
-        self.home_menu.add.button("Play", self.show_objective_menu, font_size=60)
-        self.home_menu.add.button("Top scores", self.select_top_scores, font_size=60)
-        self.home_menu.add.button("Settings", self.select_settings, font_size=60)
-        self.home_menu.add.button("Exit game", self.kill_game, font_size=60)
+        self.home_menu.add.button("Play", self.show_objective_menu, font_size=30)
+        self.home_menu.add.button("Top scores", self.select_top_scores, font_size=30)
+        self.home_menu.add.button("Settings", self.select_settings, font_size=30)
+        self.home_menu.add.button("Exit game", self.kill_game, font_size=30)
         
         self.game_over = pygame_menu.Menu("You won", 600, 400, theme=self.menu_theme)
         self.game_over.add.label(f"Score {0}")
@@ -83,16 +92,17 @@ class game:
         self.settings_menu.add.button("Back", self.show_home_menu)
         
         self.user_name_menu = pygame_menu.Menu("Input", 600, 400, theme=self.menu_theme)
-        self.user_name_menu.add.text_input("Username: ", maxchar=12, input_underline='_', onreturn=self.show_username, font_size=50)
+        self.user_name_menu.add.text_input("Username: ", maxchar=12, input_underline='_', onreturn=self.show_username, font_size=30)
         
         self.results_menu = pygame_menu.Menu("Results", 600, 400, theme=self.menu_theme)
         
-        self.max_time = 65*1000 # In milliseconds
+        # Create player stats
         self.start_time = 0
         self.time_left = 0
         self.score = 0
         
-        self.font_obj = pygame.font.Font("./assets/fonts/ThaleahFat.ttf", 45)
+        # Used to show the score and time to the player
+        self.font_obj = pygame.font.Font("./assets/fonts/ChakraPetch-Bold.ttf", 35)
         
         # Create the top scores table
         self.table_id = None
@@ -102,13 +112,14 @@ class game:
         self.top_scores_table = None
         self.create_top_scores_table()
         
+        self.window_size = window_size
         # Create the pop up menu items
         self.pop_up = pygame_menu.Menu("Hint", 600, 400, theme=self.menu_theme)
-        self.canvas = pygame.surface.Surface((840, 640))
+        self.canvas = pygame.surface.Surface(self.window_size)
         self.hint_timer1 = 0
         self.hint_timer2 = 0
         self.hint_duration = 5000               # pop up menus last for 5 seconds
-        self.hint_cooldown = 12500              # Time in between pop up menus
+        self.hint_cooldown = 12503              # Time in between pop up menus
         
         self.database = './assets/game_data/data_csv.csv'
         self.events_que = []
@@ -118,6 +129,17 @@ class game:
         
         self.volume = 1
 
+        # Load items to decorate the background
+        self.decor_item1 = pygame.image.load('./assets/decor/tree.png').convert_alpha()
+        self.decor_item1 = pygame.transform.scale(self.decor_item1, (self.window_size[0]*0.2, self.window_size[0]*0.2))
+        self.decor_item2 = pygame.image.load('./assets/decor/earth.png').convert_alpha()
+        self.decor_item2 = pygame.transform.scale(self.decor_item2, (self.window_size[0]*0.2, self.window_size[0]*0.2))
+        self.decor_item3 = pygame.image.load('./assets/decor/energy.png').convert_alpha()
+        self.decor_item3 = pygame.transform.scale(self.decor_item3, (self.window_size[0]*0.2, self.window_size[0]*0.2))
+        self.decor_item4 = pygame.image.load('./assets/decor/lightbulb.png').convert_alpha()
+        self.decor_item4 = pygame.transform.scale(self.decor_item4, (self.window_size[0]*0.2, self.window_size[0]*0.2))
+
+    # games main update loop
     def update(self):
         self.events_que = pygame.event.get()
         for event in self.events_que:
@@ -126,12 +148,16 @@ class game:
         self.current_context()
 
         
+    # draws whatever the player is currently focused on
     def draw(self, screen: pygame.Surface):
         self.current_draw(screen)
         
+    # Used to close the game
     def kill_game(self):
         self.alive = False
         
+
+    # Games main event loop, polls for events, updates the current entity and calls the relevent draw method
     def run(self, screen: pygame.Surface):
         self.sound_channel.play(self.bg_music, -1)
         while self.alive:
@@ -211,7 +237,7 @@ class game:
                 
 
     def load_energy_tipsA(self):
-        energy_list_A = [];
+        energy_list_A = []
         with open("./assets/game_data/ListA.txt") as tips:
             line = "start"
             while line != "":
@@ -262,27 +288,35 @@ class game:
     =================================================================="""
     
     def render_results_menu(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.results_menu.draw(screen)
         
     def render_pop_up(self, screen: pygame.Surface):
+        self.add_decor(screen)
         screen.blit(self.canvas, (0, 0))
         
     def render_user_input(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.user_name_menu.draw(screen)
         
     def render_home_menu(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.home_menu.draw(screen)
  
     def render_info_menu(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.info_menu.draw(screen)
         
     def render_game_over_menu(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.game_over.draw(screen)
         
     def render_top_scores(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.top_scores_table.draw(screen)
         
     def render_settings_menu(self, screen: pygame.Surface):
+        self.add_decor(screen)
         self.settings_menu.draw(screen)
         
     """=============================================================
@@ -341,8 +375,9 @@ class game:
         pygame.event.get()
         keys = pygame.key.get_pressed()
         self.t2 = pygame.time.get_ticks()     
+        #print(f"Player position {[self.player.rect.centerx, self.player.rect.centery]} player destination {self.player_destination}")
 
-        if self.player.rect.centerx != self.player_destination[0] or self.player.rect.centery != self.player_destination[1]:
+        if int(self.player.rect.centerx) != int(self.player_destination[0]) or int(self.player.rect.centery) != int(self.player_destination[1]):
             self.player.rect.centerx += self.speed[1]
             self.player.rect.centery += self.speed[0]
             self.player.update_animation_position(self.player.rect.center)
@@ -372,7 +407,7 @@ class game:
                 self.current_context = self.handle_results_menu
                 self.current_draw = self.render_results_menu
                 self.create_results_menu(False)
-                self.ui_sound_channel.play(self.game_over)
+                self.ui_sound_channel.play(self.game_over_music)
                 # Reset the game
                 self.player = player(self.player_size, self.animation_rate, self.tiles.index_to_coord(self.start_index))
                 self.player_index = self.start_index
@@ -395,15 +430,15 @@ class game:
         self.tiles.draw(screen)
         self.player.draw(screen)
         self.score = round(self.time_left/1000) + self.tiles.compute_score()
-        timer_banner = self.font_obj.render(f"Time left :{round(self.time_left/1000)}", True, (0, 0, 0))
-        score_banner = self.font_obj.render(f"Score: {self.score}", True, (0, 0, 0))
+        timer_banner = self.font_obj.render(f"Time left :{round(self.time_left/1000)}", True, (0, 0, 0), (255, 255, 255))
+        score_banner = self.font_obj.render(f"Score: {self.score}", True, (0, 0, 0), (255, 255, 255))
         timer_pos = timer_banner.get_rect()
-        timer_pos.left = 200
-        timer_pos.top = 540
+        timer_pos.left = 350
+        timer_pos.top = 10
         
         score_pos = score_banner.get_rect()
-        score_pos.left = 500
-        score_pos.top = 540
+        score_pos.left = 800
+        score_pos.top = 10
         
         screen.blit(timer_banner, timer_pos)
         screen.blit(score_banner, score_pos)
@@ -445,12 +480,16 @@ class game:
         
     def create_results_menu(self, has_won: bool):
         message = "You won!" if has_won else "Sorry, you lost."
-        self.results_menu = pygame_menu.Menu("Results", 840, 600, theme=self.menu_theme)
+        self.results_menu = pygame_menu.Menu("Results", self.window_size[0], 600, theme=self.menu_theme)
         self.results_menu.add.label(message)
         self.results_menu.add.label(f"Score {self.score}")
         self.results_menu.add.label(f"Current temperature {game.get_current_temperature()}")
         if has_won:
+            list_b = self.load_energy_tips_B()
+            choosen_hint = choice(list_b)
             row = self.find_score_in_database(str(self.score))
+            self.results_menu.add.label("Heres some information")
+            self.results_menu.add.label(choosen_hint, wordwrap=True)
             if row:
                 table = self.results_menu.add.table("info", font_size=17)
                 table.add_row([" Sensor ID ", " Description ", " Unit ", " Info Province ", "Info Manucipalicty", " Date ", " Temperature "])
@@ -461,10 +500,7 @@ class game:
                     newStr = "  " + row[i] + "  "
                     row[i] = newStr
                 table.add_row(row)
-                list_b = self.load_energy_tips_B()
-                choosen_hint = choice(list_b)
-                self.results_menu.add.label("Heres some information")
-                self.results_menu.add.label(choosen_hint, wordwrap=True)
+                
         else:
             list_b = self.load_energy_tips_B()
             choosen_hint = choice(list_b)
@@ -484,3 +520,16 @@ class game:
         data = data.json()["hourly"]["temperature_2m"]
         hour = time.localtime().tm_hour
         return data[hour]
+    
+    def set_game_time(self, selected_level,  new_time_value: int):
+        self.max_time = new_time_value * 1000 # New time value is in milliseconds
+
+    def add_decor(self, screen: pygame.Surface):
+        base = self.decor_item1.get_rect()
+        screen.blit(self.decor_item1, base)
+        base.bottom = self.window_size[1]
+        screen.blit(self.decor_item4, base)
+        base.right = self.window_size[0]
+        screen.blit(self.decor_item3, base)
+        base.top = 0
+        screen.blit(self.decor_item2, base)
