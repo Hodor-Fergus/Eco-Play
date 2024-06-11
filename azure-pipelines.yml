@@ -11,8 +11,8 @@ jobs:
   - checkout: git://github.com/Hodor-Fergus/Eco-Play@main
 
   - script: |
-      git config --global user.email "you@example.com"
-      git config --global user.name "Your Name"
+      git config --global user.email "r0768810@student.thomasmore.be"
+      git config --global user.name "Hodor-Fergus"
       git remote add azure https://dev.azure.com/FergusEssoKetchaAssam/_git/Eco%20PLay
       git push azure main --force
     displayName: 'Push changes to Azure Repos'
