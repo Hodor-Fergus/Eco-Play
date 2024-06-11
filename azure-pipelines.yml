@@ -8,7 +8,7 @@ jobs:
   pool:
     vmImage: 'ubuntu-latest'
   steps:
-  - checkout: git://github.com/Hodor-Fergus/Eco-Play@main
+  - checkout: self
 
   - script: |
       git config --global user.email "r0768810@student.thomasmore.be"
