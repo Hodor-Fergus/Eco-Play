@@ -1,0 +1,18 @@
+trigger:
+  branches:
+    include:
+    - main  # Adjust if your main branch has a different name
+
+jobs:
+- job: SyncJob
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - checkout: git://github.com/Hodor-Fergus/Eco-Play@main
+
+  - script: |
+      git config --global user.email "you@example.com"
+      git config --global user.name "Your Name"
+      git remote add azure https://dev.azure.com/FergusEssoKetchaAssam/_git/Eco%20PLay
+      git push azure main --force
+    displayName: 'Push changes to Azure Repos'
