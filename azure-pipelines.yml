@@ -16,3 +16,5 @@ jobs:
       git remote add azure https://dev.azure.com/FergusEssoKetchaAssam/_git/Eco%20PLay
       git push azure main --force
     displayName: 'Push changes to Azure Repos'
+    env:
+      AZURE_DEVOPS_EXT_PAT: $(AzureDevOpsPAT)  # Uses the secret PAT for authentication
