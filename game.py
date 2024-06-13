@@ -7,6 +7,8 @@ import pygame_menu
 import csv
 import urllib3
 import time
+from azure.storage.blob import BlobServiceClient
+from os import remove
 
 """=========================================================================================================
 Class to handle all of the games functions
@@ -17,6 +19,14 @@ Creation of menus and gui elements
 class game:
     def __init__(self, window_size: list[int], tile_size: list[float], player_size: list[int], player_speed: float, animation_rate: int, start_index: list[int]):
         
+        # Load data from the Azure container
+        self.blob_names = ["ListA.txt", "ListB.txt", "best_scores.txt", "data_csv.csv", "hints.txt"]
+        self.connection_string = "DefaultEndpointsProtocol=https;AccountName=ecoplay;AccountKey=XGjctFWz3oWSA/YzDpQfk6OztAWkeladgc7QqaXm6Rom1h+a2TRABFogUQTKgmh0UnkML5QCg42a+ASt1v4t+g==;EndpointSuffix=core.windows.net"
+        self.container_name = "files"
+
+        # Download the game data from the cloud, happens once at the start of the game
+        self.download_game_data()
+
         self.max_time = 65*1000 # In milliseconds
 
         # Define a theme for the menus in the game
@@ -30,6 +40,13 @@ class game:
         self.menu_theme.title_font = './assets/fonts/JosefinSans-Italic-VariableFont_wght.ttf'
         self.menu_theme.title_font_size = 40
         self.menu_theme.selection_color = (200, 200, 255)
+
+        self.sub_menu_theme = self.menu_theme.copy()
+        self.sub_menu_theme.background_color = (30, 80, 0)
+        self.sub_menu_theme.title = False
+
+        self.third_theme = self.menu_theme.copy()
+        self.third_theme.title = False
         
         # Load and create sounds for the game
         self.bg_music = pygame.mixer.Sound('./assets/sounds/bg_music.mp3')
@@ -59,16 +76,19 @@ class game:
         # the home menu       
         self.info_menu = pygame_menu.Menu("Instructions", 0.8*window_size[0], 0.95*window_size[1], theme=self.menu_theme)
         self.info_menu.add.label("Make your way to the treasure box", font_size=30)
-        self.info_menu.add.label("Points: ", font_size=30)
-        self.info_menu.add.label("Blue Diamond = 50 points      Gold = 15 points", font_size=30)
-        self.info_menu.add.label("Silver = 10 points   Black = 1 point     Red = 5 points", font_size=30)
-
-
+        self.info_menu.add.label("TIPS: ", font_size=30)
+        self.info_menu.add.label("Blue   = 50 points" , font_size=20)
+        self.info_menu.add.label("Gold   = 15 points", font_size=20)
+        self.info_menu.add.label("Silver = 10 points", font_size=20)
+        self.info_menu.add.label("Red    = 5 points", font_size=20)
+        self.info_menu.add.label("Black  = 1 point", font_size=20)
+        
+        
         self.info_menu.add.label("Controls:")
-        self.info_menu.add.label("UP Arrow         Up")
-        self.info_menu.add.label("DOWN Arrow         Down")
-        self.info_menu.add.label("LEFT Arrow        Left")
-        self.info_menu.add.label("RIGHT Arrow       Right")
+        self.info_menu.add.label("UP Arrow    = Up", font_size=20)
+        self.info_menu.add.label("DOWN Arrow  = Down", font_size=20)
+        self.info_menu.add.label("LEFT Arrow  = Left", font_size=20)
+        self.info_menu.add.label("RIGHT Arrow = Right", font_size=20)
         
         items = [('1', 65), ('2', 45), ('3', 30)]
         self.info_menu.add.selector("Level", items, onchange=self.set_game_time)
@@ -82,10 +102,12 @@ class game:
         self.home_menu.add.button("Settings", self.select_settings, font_size=30)
         self.home_menu.add.button("Exit game", self.kill_game, font_size=30)
         
+        # When You Win
         self.game_over = pygame_menu.Menu("You won", 600, 400, theme=self.menu_theme)
-        self.game_over.add.label(f"Score {0}")
-        self.game_over.add.button("Return to Main Menu", self.show_home_menu)
-        self.game_over.add.button("Exit game", self.kill_game)
+        
+        self.information_menu = pygame_menu.Menu("You won", 600, 400, theme=self.menu_theme)
+        self.home_button = pygame_menu.Menu("", 300, 200, theme=self.third_theme, position=(85, 55))
+        self.home_button.add.button("Home", self.show_home_menu, font_size=40)
         
         self.settings_menu = pygame_menu.Menu("Settings", 600, 400, theme=self.menu_theme)
         self.settings_menu.add.range_slider("Volume", 1, (0, 1), 0.1, self.sound_channel.set_volume)
@@ -100,6 +122,7 @@ class game:
         self.start_time = 0
         self.time_left = 0
         self.score = 0
+        self.current_temp = 0
         
         # Used to show the score and time to the player
         self.font_obj = pygame.font.Font("./assets/fonts/ChakraPetch-Bold.ttf", 35)
@@ -129,6 +152,7 @@ class game:
         
         self.volume = 1
 
+
         # Load items to decorate the background
         self.decor_item1 = pygame.image.load('./assets/decor/tree.png').convert_alpha()
         self.decor_item1 = pygame.transform.scale(self.decor_item1, (self.window_size[0]*0.2, self.window_size[0]*0.2))
@@ -138,6 +162,8 @@ class game:
         self.decor_item3 = pygame.transform.scale(self.decor_item3, (self.window_size[0]*0.2, self.window_size[0]*0.2))
         self.decor_item4 = pygame.image.load('./assets/decor/lightbulb.png').convert_alpha()
         self.decor_item4 = pygame.transform.scale(self.decor_item4, (self.window_size[0]*0.2, self.window_size[0]*0.2))
+
+        # 
 
     # games main update loop
     def update(self):
@@ -167,6 +193,8 @@ class game:
             pygame.display.flip()
             self.game_clock.tick(self.FPS)
         self.sound_channel.pause()
+        self.update_best_scores()
+        self.remove_temp_files()
     """===============================================================================================
         These methods hand over control from one game item to another, eg home menu to settings menu
     ================================================================================================="""
@@ -230,7 +258,8 @@ class game:
     def find_score_in_database(self, score: str):
         reading_column_index = 6
         with open(self.database, 'r', encoding="utf8") as csv_file:
-            reader = csv.reader(csv_file)                   # Does not need to load the whole file into memory
+            reader = csv.reader(csv_file )                   # Does not need to load the whole file into memory
+            print(reader)
             for row in reader:
                 if row[reading_column_index] == score:      # Look for the column with the same score as the given score
                     return row
@@ -273,15 +302,41 @@ class game:
             while line != "":
                 try:
                     line = best_scores.readline()
-                    if line != "":
+                    if line != "" and line != "\n":
                         info = line.split(',')
+                        info[1] = info[1].replace('\n', '')
                         scores[info[0]] = int(info[1])
                 except IOError:
                     print("Error: Cannot read file.")
                     return None
         return scores
     
+    def download_game_data(self):
+        blob_service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
 
+        for blob_name in self.blob_names:
+            blob_service = blob_service_client.get_blob_client(container=self.container_name, blob=blob_name)
+            download_stream = blob_service.download_blob().content_as_bytes()
+            base_path = './assets/game_data/'
+            with open(f"{base_path}{blob_name}", 'wb') as file:
+                file.write(download_stream)
+
+    # Stores the latest list of best scores onto the cloud, overwriting the already existing best scores files
+    def update_best_scores(self):
+        blob_service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
+        blob_name = "best_scores.txt"
+        blob_service = blob_service_client.get_blob_client(container=self.container_name, blob=blob_name)
+
+        with open("./assets/game_data/best_scores.txt", 'rb') as data:
+            blob_service.upload_blob(data, overwrite=True)
+
+    # Removes the files which were used during the game
+    # These live on the cloud but are stored locally when the game is running
+    # Before the game is closed the local copies are destroyed
+    def remove_temp_files(self):
+        for filename in self.blob_names:
+            base_path = './assets/game_data/'
+            remove(f"{base_path}{filename}")
     """===============================================================
         Render methods, these render various game components such as 
         menus and the game itself.
@@ -290,6 +345,8 @@ class game:
     def render_results_menu(self, screen: pygame.Surface):
         self.add_decor(screen)
         self.results_menu.draw(screen)
+        self.information_menu.draw(screen)
+        self.home_button.draw(screen)
         
     def render_pop_up(self, screen: pygame.Surface):
         self.add_decor(screen)
@@ -309,7 +366,9 @@ class game:
         
     def render_game_over_menu(self, screen: pygame.Surface):
         self.add_decor(screen)
-        self.game_over.draw(screen)
+        self.results_menu.draw(screen)
+        self.information_menu.draw(screen)
+        self.home_button.draw(screen)
         
     def render_top_scores(self, screen: pygame.Surface):
         self.add_decor(screen)
@@ -344,6 +403,7 @@ class game:
                     
     def handle_results_menu(self):
         self.results_menu.update(self.events_que) 
+        self.home_button.update(self.events_que)
         
     def handle_home_menu(self):
         self.home_menu.update(self.events_que)
@@ -353,6 +413,8 @@ class game:
         
     def handle_game_over_menu(self):
         self.game_over.update(self.events_que)
+        self.results_menu.update(self.events_que)
+        self.home_button.update(self.events_que)
         
     def update1(self):
         self.time_left = self.max_time - (pygame.time.get_ticks() - self.start_time)
@@ -470,26 +532,32 @@ class game:
         for hint in hints_temp:
             if hint != '\n':
                 hints.append(hint)
-        self.pop_up = pygame_menu.Menu("Energy Tip!", 800, 300, theme=self.menu_theme)
+        self.pop_up = pygame_menu.Menu("Energy Tip!", 800, 250, theme=self.menu_theme)
        
         hint = choice(hints)
         self.pop_up.add.label(hint, wordwrap=True)
         self.current_draw(self.canvas)
         self.pop_up.draw(self.canvas)
       
-        
+     # When you loss the game   
     def create_results_menu(self, has_won: bool):
         message = "You won!" if has_won else "Sorry, you lost."
-        self.results_menu = pygame_menu.Menu("Results", self.window_size[0], 600, theme=self.menu_theme)
+        self.results_menu = pygame_menu.Menu(f"Results                                                                  {game.get_current_temperature()}", self.window_size[0], 600, theme=self.menu_theme)
         self.results_menu.add.label(message)
         self.results_menu.add.label(f"Score {self.score}")
-        self.results_menu.add.label(f"Current temperature {game.get_current_temperature()}")
+        for i in range(8):
+            self.results_menu.add.label(" ")
+        
+        list_b = self.load_energy_tips_B()
+        choosen_hint = choice(list_b)
+        self.information_menu = pygame_menu.Menu("", 500, 250, theme=self.sub_menu_theme, position=(10, 55))
+        self.information_menu.add.label("Here's some info")
+        self.information_menu.add.label(choosen_hint, font_size=20, wordwrap=True)
+        
         if has_won:
-            list_b = self.load_energy_tips_B()
-            choosen_hint = choice(list_b)
-            row = self.find_score_in_database(str(self.score))
-            self.results_menu.add.label("Heres some information")
-            self.results_menu.add.label(choosen_hint, wordwrap=True)
+           
+            row = self.find_score_in_database(str(80))
+            
             if row:
                 table = self.results_menu.add.table("info", font_size=17)
                 table.add_row([" Sensor ID ", " Description ", " Unit ", " Info Province ", "Info Manucipalicty", " Date ", " Temperature "])
@@ -506,7 +574,6 @@ class game:
             choosen_hint = choice(list_b)
             self.results_menu.add.label("Heres some information")
             self.results_menu.add.label(choosen_hint, wordwrap=True)
-        self.results_menu.add.button("Home", self.show_home_menu)
         
 
     def write_top_scores_list(self):
@@ -524,6 +591,8 @@ class game:
     def set_game_time(self, selected_level,  new_time_value: int):
         self.max_time = new_time_value * 1000 # New time value is in milliseconds
 
+
+    # Responsible for some of the detail in the background of the game
     def add_decor(self, screen: pygame.Surface):
         base = self.decor_item1.get_rect()
         screen.blit(self.decor_item1, base)
