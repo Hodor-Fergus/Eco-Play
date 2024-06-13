@@ -5,7 +5,7 @@ Eco-Play is an engaging maze game designed to educate players about energy conse
 
 To run the game use the following command while in this directory
 
-python SpaceInvaders.py
+python EcoPlay.py
 
 Alternatively open the project in your IDE of choice and run the SpaceInvaders.py file
 
